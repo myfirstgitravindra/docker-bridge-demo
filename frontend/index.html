@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<!--
+  app2-frontend.html
+  A polished, responsive single-file frontend that fetches /data from your backend
+  - Replace BACKEND_URL if needed (relative path or full URL)
+  - Handles loading, error states, retry, and shows a timestamp
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>App 2 Frontend</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f1724;        /* deep navy */
+      --card:#0b1220;      /* darker card */
+      --accent:#7c5cff;    /* purple accent */
+      --muted:#9aa4bf;
+      --glass: rgba(255,255,255,0.04);
+      --success:#2ecc71;
+      --danger:#ff6b6b;
+      --glass-border: rgba(255,255,255,0.06);
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(180deg, #071028 0%, #08122a 40%, #061022 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.4;
+    }
+
+    .container{
+      width:100%;
+      max-width:920px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:14px;
+      padding:20px;
+      border:1px solid var(--glass-border);
+      box-shadow: 0 8px 30px rgba(3,8,23,0.6);
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:20px;
+      align-items:start;
+    }
+
+    header.app-header{
+      grid-column:1 / -1;
+      display:flex;
+      gap:16px;
+      align-items:center;
+    }
+    .logo{
+      width:56px;height:56px;border-radius:12px;
+      background:linear-gradient(135deg,var(--accent),#4cc1ff);
+      display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:20px;
+      box-shadow: 0 6px 20px rgba(124,92,255,0.15);
+      flex-shrink:0;
+    }
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .main-card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;padding:20px;border:1px solid var(--glass-border);
+      min-height:240px;display:flex;flex-direction:column;gap:12px;
+    }
+    .meta{display:flex;gap:12px;align-items:center}
+    .badge{background:var(--glass);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,0.03)}
+
+    .response-card{
+      display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      border:1px solid rgba(255,255,255,0.03);
+      min-height:120px;align-items:flex-start;justify-content:center;
+    }
+    .response-text{font-size:16px;color:#eaf0ff}
+    .muted{color:var(--muted);font-size:13px}
+
+    .side-panel{position:relative;display:flex;flex-direction:column;gap:12px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button.btn{
+      background:linear-gradient(180deg,var(--accent), #5a44e6);
+      color:white;border:0;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(92,66,230,0.2);
+    }
+    button.ghost{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+
+    .small{font-size:13px;padding:8px 10px}
+    footer.note{grid-column:1 / -1;color:var(--muted);font-size:12px;padding-top:6px}
+
+    /* Loading spinner */
+    .spinner{width:36px;height:36px;border-radius:50%;border:4px solid rgba(255,255,255,0.08);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .status-line{display:flex;gap:8px;align-items:center}
+    .ok-dot{width:10px;height:10px;border-radius:50%;background:var(--success);box-shadow:0 6px 16px rgba(46,204,113,0.08)}
+    .err-dot{width:10px;height:10px;border-radius:50%;background:var(--danger)}
+
+    /* Responsive */
+    @media (max-width:880px){
+      .container{grid-template-columns:1fr;}
+      .side-panel{order:3}
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header class="app-header">
+      <div class="logo">A2</div>
+      <div>
+        <h1>App 2 Frontend</h1>
+        <p class="lead">A small, elegant UI that fetches data from your backend and shows live status.</p>
+      </div>
+    </header>
+
+    <section class="main-card" aria-labelledby="response-title">
+      <div class="meta">
+        <div class="badge">Environment: <strong style="margin-left:6px">Development</strong></div>
+        <div style="flex:1"></div>
+        <div class="status-line" id="statusLine">
+          <div class="spinner" id="spinner" title="Loading" style="display:none"></div>
+          <div id="statusDot" style="display:none" aria-hidden="true"></div>
+          <div class="muted" id="statusText">Idle</div>
+        </div>
+      </div>
+
+      <h2 id="response-title" style="margin:0;font-size:15px">Latest message</h2>
+
+      <div class="response-card" id="responseCard">
+        <div class="response-text" id="response">— No data yet —</div>
+        <div class="muted" id="responseMeta">Timestamp: —</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <button class="btn small" id="refreshBtn">Refresh</button>
+        <button class="ghost small" id="copyBtn">Copy message</button>
+        <div style="flex:1"></div>
+        <div class="muted" id="hint">Backend: <code id="backendUrl" style="background:transparent;border-radius:6px;padding:2px 6px;color:var(--muted);border:1px solid rgba(255,255,255,0.02)">http://backend:5000/data</code></div>
+      </div>
+
+    </section>
+
+    <aside class="side-panel">
+      <div style="background:var(--card);padding:12px;border-radius:10px;border:1px solid var(--glass-border);">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Connection</strong>
+          <span class="muted" id="latency">—</span>
+        </div>
+        <p class="muted" style="margin-top:10px">Use the Refresh button to re-fetch. If you run into CORS on the browser, set the backend to allow origin or use a reverse proxy / same-origin path.</p>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="ghost small" id="toggleEnv">Toggle Environment</button>
+        <button class="ghost small" id="openConsole">Open console</button>
+      </div>
+
+      <div style="background:var(--card);padding:12px;border-radius:10px;border:1px solid var(--glass-border);">
+        <strong>Last fetch</strong>
+        <div class="muted" id="lastFetch">—</div>
+      </div>
+    </aside>
+
+    <footer class="note">Tip: Replace <code>http://backend:5000/data</code> with <code>/data</code> when serving front & backend from same host.</footer>
+  </div>
+
+  <script>
+    // Set the backend URL here (change to relative path if you host together)
+    let BACKEND_URL = 'http://backend:5000/data';
+
+    const responseEl = document.getElementById('response');
+    const responseMeta = document.getElementById('responseMeta');
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+    const spinner = document.getElementById('spinner');
+    const latencyEl = document.getElementById('latency');
+    const lastFetchEl = document.getElementById('lastFetch');
+    const backendUrlEl = document.getElementById('backendUrl');
+
+    backendUrlEl.innerText = BACKEND_URL;
+
+    function setLoading(on){
+      spinner.style.display = on ? 'block' : 'none';
+      statusText.textContent = on ? 'Loading...' : 'Idle';
+      if(!on){ statusDot.style.display = 'none'; }
+    }
+
+    function setStatus(ok, text){
+      statusDot.style.display = 'inline-block';
+      if(ok){ statusDot.className = 'ok-dot'; statusText.textContent = text || 'OK'; }
+      else{ statusDot.className = 'err-dot'; statusText.textContent = text || 'Error'; }
+    }
+
+    async function fetchData(){
+      setLoading(true);
+      const start = performance.now();
+      try{
+        const controller = new AbortController();
+        const timeout = setTimeout(()=> controller.abort(), 8000);
+        const res = await fetch(BACKEND_URL, { signal: controller.signal });
+        clearTimeout(timeout);
+        const took = Math.round(performance.now() - start);
+        latencyEl.textContent = took + 'ms';
+
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+
+        const data = await res.json();
+        const now = new Date().toLocaleString();
+        responseEl.textContent = data.message || JSON.stringify(data);
+        responseMeta.textContent = 'Timestamp: ' + now;
+        lastFetchEl.textContent = now;
+        setStatus(true, 'Connected');
+      }catch(err){
+        console.error('Fetch error', err);
+        responseEl.textContent = 'Failed to fetch data — ' + (err.name === 'AbortError' ? 'timeout' : err.message);
+        responseMeta.textContent = 'Timestamp: ' + new Date().toLocaleString();
+        latencyEl.textContent = '—';
+        lastFetchEl.textContent = new Date().toLocaleString();
+        setStatus(false, 'Error');
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', fetchData);
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      const txt = responseEl.textContent || '';
+      navigator.clipboard?.writeText(txt).then(()=>{
+        const old = document.getElementById('copyBtn').textContent;
+        document.getElementById('copyBtn').textContent = 'Copied!';
+        setTimeout(()=> document.getElementById('copyBtn').textContent = 'Copy message', 1500);
+      }).catch(()=> alert('Unable to copy'));
+    });
+
+    // Toggle environment just changes the badge text for demo purposes
+    document.getElementById('toggleEnv').addEventListener('click', ()=>{
+      const badge = document.querySelector('.badge');
+      if(badge.innerText.includes('Development')) badge.innerHTML = 'Environment: <strong style="margin-left:6px">Production</strong>';
+      else badge.innerHTML = 'Environment: <strong style="margin-left:6px">Development</strong>';
+    });
+
+    document.getElementById('openConsole').addEventListener('click', ()=>{
+      alert('Open DevTools (F12) to see network & console logs.');
+    });
+
+    // Auto-load once on page open
+    fetchData();
+
+    // Optional: refresh periodically (commented out)
+    // setInterval(fetchData, 30_000);
+  </script>
+</body>
+</html>
