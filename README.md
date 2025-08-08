@@ -30,4 +30,33 @@ docker run -d --name frontend  --network JHC -p 8080:5000 python-frontend
 ```
 ### 5. Access the app in your browser
 ### Open: http://localhost:8080
-
+#### 6. Commonds and steps
+docker ps -a
+docker images
+docker build -t python-backend .
+docker run -d --name backend-container -p 1234:5000 --network MYN python-backend
+docker logs backend-container
+curl http://localhost:1234
+docker ps -a
+docker rm -f 229f8b8637dd
+docker rmi -f python-backend
+docker build -t python-backend .
+docker run -d --name backend-container -p 1234:5000 --network MYN python-backend
+docker ps -a
+docker backend-container
+logs
+docker logs backend-container
+cd .
+cd ..
+ls
+cd frontend/
+docker ps
+docker build -t fronted-ui .
+docker build -t frontend-ui .
+docker run -d --name frontend-container --network MYN -p 10:80 frontend-ui
+docker ps -a
+docker images
+docker rm -f fronted-ui
+docker rmi -f fronted-ui
+docker ps -a
+history
